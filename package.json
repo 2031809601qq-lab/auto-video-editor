@@ -6,8 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "build:win": "electron-builder --win portable",
-    "build:mac": "electron-builder --mac dmg zip"
+    "build:win": "electron-builder --win portable --publish never",
+    "build:mac": "electron-builder --mac dmg zip --publish never"
   },
   "devDependencies": {
     "electron": "^33.4.11",
