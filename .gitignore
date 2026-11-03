@@ -10,3 +10,6 @@
 *.log
 工具/启动日志.txt
 工具/手机互传/手机访问地址.txt
+node_modules/
+dist/
+.cache/
