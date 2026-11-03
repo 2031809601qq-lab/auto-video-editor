@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
+const { templates, videoFilter } = require('./effects');
 
 function safeName(value) { return String(value || '').replace(/[\\/:*?"<>|]/g, '').trim(); }
 function validate(plan, sourceRoot, outputRoot) {
@@ -8,6 +9,7 @@ function validate(plan, sourceRoot, outputRoot) {
   if (!fs.existsSync(sourceRoot)) throw Error('素材目录不存在');
   for (const topic of plan.topics) {
     if (!safeName(topic.topic) || !safeName(topic.title) || !String(topic.description || '').trim()) throw Error('每个话题都需要名称、标题和说明');
+    if (topic.template && !templates[topic.template]) throw Error(`未知模板：${topic.template}`);
     if (!Array.isArray(topic.segments) || !topic.segments.length) throw Error('每个话题至少需要一段素材');
     for (const segment of topic.segments) {
       if (!segment.source || !Number.isFinite(Number(segment.start)) || !Number.isFinite(Number(segment.end)) || Number(segment.start) < 0 || Number(segment.end) <= Number(segment.start)) throw Error('素材切点无效');
@@ -55,8 +57,9 @@ async function render({ plan, sourceRoot, outputRoot, ffmpeg = 'ffmpeg', ffprobe
         if (Number(seg.end) > durationCache.get(input) + 0.25) throw Error(`切点超出素材长度：${seg.source}`);
         const duration = Number(seg.end) - Number(seg.start);
         const encodeStart = performance.now();
-        await run(ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-ss', String(seg.start), '-i', input, '-t', String(duration), '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'fps=60,scale=1080:1920:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', part], onLog);
-        topicMetric.segments.push({ source: seg.source, inputSeconds: duration, encodeMs: Math.round(performance.now() - encodeStart) });
+        const effect = seg.effect || (si === 0 ? (templates[topic.template || 'clean'].effects[1] || 'none') : 'none');
+        await run(ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-ss', String(seg.start), '-i', input, '-t', String(duration), '-map', '0:v:0', '-map', '0:a:0?', '-vf', videoFilter(effect), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', part], onLog);
+        topicMetric.segments.push({ source: seg.source, effect, inputSeconds: duration, encodeMs: Math.round(performance.now() - encodeStart) });
         parts.push(part);
         records.push(`${seg.source}：${seg.start}s–${seg.end}s`);
         onLog?.(`已处理 ${topic.topic} 第 ${si + 1}/${topic.segments.length} 段`);
@@ -67,7 +70,7 @@ async function render({ plan, sourceRoot, outputRoot, ffmpeg = 'ffmpeg', ffprobe
       const concatStart = performance.now();
       await run(ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', concat, '-c', 'copy', '-movflags', '+faststart', target], onLog);
       topicMetric.concatMs = Math.round(performance.now() - concatStart);
-      fs.writeFileSync(path.join(folder, '拆解说明.md'), `# ${topic.title}\n\n${topic.description}\n\n## 素材时间段\n\n${records.map(x => `- ${x}`).join('\n')}\n`, 'utf8');
+      fs.writeFileSync(path.join(folder, '拆解说明.md'), `# ${topic.title}\n\n${topic.description}\n\n模板：${templates[topic.template || 'clean'].name}\n\n## 素材时间段\n\n${records.map((x, i) => `- ${x}；动效：${topicMetric.segments[i].effect}`).join('\n')}\n`, 'utf8');
       fs.writeFileSync(path.join(folder, '标题.txt'), `${topic.title}\n`, 'utf8');
       indexLines.push(`- [${topic.title}](${path.relative(outputRoot, target).replace(/\\/g, '/')})`);
       renderMetrics.topics.push(topicMetric);

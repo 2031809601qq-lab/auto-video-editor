@@ -41,7 +41,7 @@ function extractText(response) { return (response.output || []).flatMap(x => x.c
 function normalize(raw, sourceRoot, durations) {
   const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (!Array.isArray(data.topics)) throw Error('AI 未返回话题列表');
-  const topics = data.topics.slice(0, 30).map(t => ({ topic: String(t.topic || '').trim(), title: String(t.title || '').trim(), description: String(t.description || '').trim(), segments: (t.segments || []).map(s => ({ source: String(s.source || ''), start: Number(s.start), end: Number(s.end) })) }));
+  const topics = data.topics.slice(0, 30).map(t => ({ topic: String(t.topic || '').trim(), title: String(t.title || '').trim(), description: String(t.description || '').trim(), template: ['clean','emphatic','story','cool'].includes(t.template) ? t.template : 'clean', segments: (t.segments || []).map(s => ({ source: String(s.source || ''), start: Number(s.start), end: Number(s.end), effect: String(s.effect || 'none') })) }));
   for (const t of topics) for (const s of t.segments) if (!Number.isFinite(durations[s.source]) || s.end > durations[s.source] + 0.25) throw Error(`AI 返回了无效切点：${s.source}`);
   const plan = { topics };
   validate(plan, sourceRoot, 'output');
@@ -61,7 +61,7 @@ async function analyze({ sourceRoot, apiKey, model = 'gpt-4.1-mini', ffmpeg = 'f
     transcript.push({ source: name, duration, segments: await transcribe(file, duration, apiKey, ffmpeg, onLog) });
   }
   onLog?.('正在按内容生成话题与前三秒钩子…');
-  const instructions = '你是中文短视频剪辑师。根据有时间码的转写内容分话题，挑选完整且有吸引力的观点作为每条视频开头钩子，再按因果顺序接解释。排除空白、设备调试、无完整表达、明确表示不要录或不要发布的内容。切点必须来自给定转写时间范围，不得编造来源。每个话题给出 topic、title、description 和 segments 数组，segments 每项含 source、start、end。避免截断一句话。只返回 JSON 对象 {"topics":[...]}。';
+  const instructions = '你是中文短视频剪辑师。根据有时间码的转写内容分话题，挑选完整且有吸引力的观点作为每条视频开头钩子，再按因果顺序接解释。排除空白、设备调试、无完整表达、明确表示不要录或不要发布的内容。切点必须来自给定转写时间范围，不得编造来源。每个话题给出 topic、title、description、template 和 segments 数组。template 从 clean（清爽口播）、emphatic（观点强调）、story（故事讲述）、cool（理性拆解）中选择；segments 每项含 source、start、end、effect。effect 从 none、punch、flash、shake、contrast、warm、cool、mono、vignette、fade 中选择，仅在开场或观点转折处使用明显动效，不要每段都震动。避免截断一句话。只返回 JSON 对象 {"topics":[...]}。';
   const result = await api('https://api.openai.com/v1/responses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, instructions, input: JSON.stringify(transcript), text: { format: { type: 'json_object' } } }) }, apiKey);
   const plan = normalize(extractText(result), sourceRoot, durations);
   onLog?.(`生成 ${plan.topics.length} 个话题，请检查切点后导出`);
