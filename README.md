@@ -1,5 +1,13 @@
 # 自动话题剪辑工具
 
+## 交给 Agent 自动部署
+
+把下面这句话发给具备电脑终端权限的 Agent：
+
+> 请部署 https://github.com/2031809601qq-lab/auto-video-editor 的 `agent-deploy` 分支。阅读仓库中的 AGENTS.md，运行对应系统的 setup 脚本，完成测试和打包，告诉我可双击运行的程序路径。
+
+Windows 使用 `scripts/setup.ps1`，macOS 使用 `scripts/setup.sh`。脚本会在可用时通过 winget 或 Homebrew 安装缺失依赖；如果系统没有包管理器，Agent 会给出所缺的软件和下一步。安装包仍依赖本机 FFmpeg 执行实际剪辑。API Key 不在部署过程中收集或保存。
+
 ## 优势
 
 - 本地处理：视频留在电脑上，素材和成片不会因为剪辑而上传云端。
