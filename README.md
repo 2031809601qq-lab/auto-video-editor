@@ -9,11 +9,13 @@
 - 可复用计划：剪辑点保存为 JSON，同一批素材可修改后重新剪辑。
 - 手机互传：同一局域网内可上传手机素材、预览电脑成片。
 
-注意：自动识别话题、空镜和钩子的能力尚未集成；目前由人确认切点和顺序。
+新版桌面界面可使用 OpenAI API 对视频原声做带时间码转写，并自动生成话题、标题、开头钩子和剪辑计划。开始前在界面输入自己的 API Key；密钥只用于本次请求，不写入计划或仓库。AI 会产生调用费用。建议在导出前审看自动生成的切点和文案。
+
+当前内容理解主要依据语音转写，尚不可靠识别纯画面空镜或核实谈话中的事实；无原声音轨的视频不适合直接使用 AI 分析。
 
 ## 新版桌面界面
 
-Windows 和 macOS 都可使用 Electron 界面。安装 Node.js 和 FFmpeg（`ffmpeg`、`ffprobe` 均需在 PATH 中），然后执行 `npm install`、`npm start`。界面按“目录 → 话题与片段 → 导出”安排操作，并显示剪辑进度。
+Windows 和 macOS 都可使用 Electron 界面。安装 Node.js 和 FFmpeg（`ffmpeg`、`ffprobe` 均需在 PATH 中），然后执行 `npm install`、`npm start`。界面按“目录 → AI 理解素材 → 检查话题与片段 → 导出”安排操作，并显示处理进度。
 
 Windows 打包运行 `npm run build:win`，得到 `dist` 内的便携 EXE。macOS 请在苹果电脑上运行 `npm run build:mac`，得到 DMG 和 ZIP。苹果版本需要在 macOS 构建和验证；Windows 无法可靠生成和签名 macOS 应用。未签名版本首次打开可能需要在系统安全设置中允许。
 

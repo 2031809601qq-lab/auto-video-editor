@@ -4,5 +4,6 @@ contextBridge.exposeInMainWorld('editor', {
   savePlan: (plan, file) => ipcRenderer.invoke('save-plan', plan, file),
   loadPlan: file => ipcRenderer.invoke('load-plan', file),
   render: options => ipcRenderer.invoke('render', options),
+  analyze: options => ipcRenderer.invoke('analyze', options),
   onLog: callback => ipcRenderer.on('render-log', (_, message) => callback(message))
 });
