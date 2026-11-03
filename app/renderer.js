@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 function make(tag, attrs = {}, parent) { const el = document.createElement(tag); for (const [key, value] of Object.entries(attrs)) key === 'text' ? el.textContent = value : el.setAttribute(key, value); parent?.append(el); return el; }
 function field(parent, label, value = '', type = 'text', cls = '') { const wrap = make('div', { class: `field ${cls}` }, parent); make('label', { text: label }, wrap); const input = make('input', { type, value }, wrap); return input; }
-const effects = { none:'无动效', punch:'开场推近', flash:'闪白', shake:'短震动', contrast:'高对比', warm:'暖色', cool:'冷色', mono:'黑白', vignette:'暗角', fade:'柔和开场' };
+const effects = { none:'无动效', punch:'开场推近', flash:'闪白', shake:'短震动', contrast:'高对比', warm:'暖色', cool:'冷色', mono:'黑白', vignette:'暗角', fade:'柔和开场', breath:'呼吸推拉', sway:'轻摆动', impact:'转折冲击' };
 const templates = { clean:'清爽口播', emphatic:'观点强调', story:'故事讲述', cool:'理性拆解' };
 const introEffects = { clean:'punch', emphatic:'flash', story:'fade', cool:'contrast' };
 function selector(parent, label, values, selected) { const wrap=make('div',{class:'field'},parent); make('label',{text:label},wrap); const select=make('select',{},wrap); for(const [id,name] of Object.entries(values)){const option=make('option',{value:id,text:name},select);if(id===selected)option.selected=true;}return select; }

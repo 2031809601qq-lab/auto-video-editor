@@ -14,7 +14,10 @@ const effects = {
   cool: { name: '冷色', filter: 'colorbalance=rs=-.04:bs=.06' },
   mono: { name: '黑白', filter: 'hue=s=0' },
   vignette: { name: '暗角', filter: 'vignette=PI/5' },
-  fade: { name: '柔和开场', filter: 'fade=t=in:st=0:d=0.35' }
+  fade: { name: '柔和开场', filter: 'fade=t=in:st=0:d=0.35' },
+  breath: { name: '呼吸推拉', filter: "zoompan=z='1.04+0.04*sin(on/12)':d=1:s=1080x1920:fps=60" },
+  sway: { name: '轻摆动', filter: "scale=1120:1992,crop=1080:1920:x='20+10*sin(n/9)':y=36" },
+  impact: { name: '转折冲击', filter: "zoompan=z='if(lt(on,7),1.15-0.15*on/7,1)':d=1:s=1080x1920:fps=60" }
 };
 function videoFilter(effect = 'none') {
   if (!effects[effect]) throw Error(`未知动效：${effect}`);
