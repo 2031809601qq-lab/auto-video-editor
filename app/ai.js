@@ -70,7 +70,15 @@ async function analyze({ sourceRoot, apiKey, provider = 'openai', model = 'gpt-5
     transcript.push({ source: name, duration, segments: await transcribe(file, duration, apiKey, ffmpeg, onLog) });
   }
   onLog?.('正在按内容生成话题与前三秒钩子…');
-  const instructions = '你是中文短视频剪辑师。根据有时间码的转写内容分话题，挑选完整且有吸引力的观点作为每条视频开头钩子，再按因果顺序接解释。排除空白、设备调试、无完整表达、明确表示不要录或不要发布的内容。切点必须来自给定转写时间范围，不得编造来源。每个话题给出 topic、title、description、template 和 segments 数组。template 从 clean（清爽口播）、emphatic（观点强调）、story（故事讲述）、cool（理性拆解）中选择；segments 每项含 source、start、end、effect。effect 从 none、punch、flash、shake、contrast、warm、cool、mono、vignette、fade、breath、sway、impact 中选择，仅在开场或观点转折处使用明显动效，不要每段都震动。避免截断一句话。只返回 JSON 对象 {"topics":[...]}。';
+  const instructions = [
+    '你是中文短视频剪辑师。输入是机器转写的有时间码文字，不能把它当作已经校对好的字幕。',
+    '生成剪辑计划前，逐段结合相邻句子复核转写。首要检查错别字、同音误写、人名地名和专业词误识别；同时检查漏字、多字、标点、语句是否通顺，以及是否符合当前语境、语义和说话者原意。',
+    '只有上下文足以确定正确说法时才修正。无法确定的词句不要猜测或编造，也不要改变原观点；在相关话题的 description 中简短标明需要人工核对的疑点。topic、title 和 description 必须使用校对后的通顺表述，不能直接沿用明显有错字或语义不通的转写。',
+    '根据校对后的内容分话题，挑选完整且有吸引力的观点作为每条视频开头钩子，再按因果顺序接解释。排除空白、设备调试、无完整表达、明确表示不要录或不要发布的内容。',
+    '校对文字不能改变原始时间码；切点必须来自给定转写时间范围，不得编造来源。避免截断一句话。',
+    '每个话题给出 topic、title、description、template 和 segments 数组。template 从 clean（清爽口播）、emphatic（观点强调）、story（故事讲述）、cool（理性拆解）中选择；segments 每项含 source、start、end、effect。',
+    'effect 从 none、punch、flash、shake、contrast、warm、cool、mono、vignette、fade、breath、sway、impact 中选择，仅在开场或观点转折处使用明显动效，不要每段都震动。只返回 JSON 对象 {"topics":[...]}。'
+  ].join('\n');
   let generated;
   if (provider === 'openai') {
     const result = await api('https://api.openai.com/v1/responses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, instructions, input: JSON.stringify(transcript), text: { format: { type: 'json_object' } } }) }, apiKey);
