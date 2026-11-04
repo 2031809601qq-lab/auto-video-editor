@@ -47,8 +47,17 @@ function normalize(raw, sourceRoot, durations) {
   validate(plan, sourceRoot, 'output');
   return plan;
 }
-async function analyze({ sourceRoot, apiKey, model = 'gpt-4.1-mini', ffmpeg = 'ffmpeg', ffprobe = 'ffprobe', onLog }) {
-  if (!apiKey?.trim()) throw Error('请填写 OpenAI API Key');
+async function analyze({ sourceRoot, apiKey, provider = 'openai', model = 'gpt-5-mini', planningApiKey, planningBaseUrl, ffmpeg = 'ffmpeg', ffprobe = 'ffprobe', onLog }) {
+  if (!apiKey?.trim()) throw Error('请填写用于语音转写的 OpenAI API Key');
+  const presetUrls = { deepseek: 'https://api.deepseek.com', gemini: 'https://generativelanguage.googleapis.com/v1beta/openai' };
+  if (!['openai', 'deepseek', 'gemini', 'compatible'].includes(provider)) throw Error('未知模型服务');
+  if (!String(model).trim()) throw Error('请选择或填写内容分析模型');
+  if (provider !== 'openai') {
+    if (!planningApiKey?.trim()) throw Error('请填写内容规划服务的 API Key');
+    const base = new URL(provider === 'compatible' ? planningBaseUrl : presetUrls[provider]);
+    if (base.protocol !== 'https:' && !(base.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(base.hostname))) throw Error('兼容接口须使用 HTTPS，或本机 HTTP 地址');
+    if (base.username || base.password || base.search || base.hash) throw Error('接口地址不能包含凭据、查询参数或片段');
+  }
   if (!fs.existsSync(sourceRoot)) throw Error('素材目录不存在');
   const files = listVideos(sourceRoot);
   if (!files.length) throw Error('素材目录没有视频');
@@ -62,8 +71,18 @@ async function analyze({ sourceRoot, apiKey, model = 'gpt-4.1-mini', ffmpeg = 'f
   }
   onLog?.('正在按内容生成话题与前三秒钩子…');
   const instructions = '你是中文短视频剪辑师。根据有时间码的转写内容分话题，挑选完整且有吸引力的观点作为每条视频开头钩子，再按因果顺序接解释。排除空白、设备调试、无完整表达、明确表示不要录或不要发布的内容。切点必须来自给定转写时间范围，不得编造来源。每个话题给出 topic、title、description、template 和 segments 数组。template 从 clean（清爽口播）、emphatic（观点强调）、story（故事讲述）、cool（理性拆解）中选择；segments 每项含 source、start、end、effect。effect 从 none、punch、flash、shake、contrast、warm、cool、mono、vignette、fade、breath、sway、impact 中选择，仅在开场或观点转折处使用明显动效，不要每段都震动。避免截断一句话。只返回 JSON 对象 {"topics":[...]}。';
-  const result = await api('https://api.openai.com/v1/responses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, instructions, input: JSON.stringify(transcript), text: { format: { type: 'json_object' } } }) }, apiKey);
-  const plan = normalize(extractText(result), sourceRoot, durations);
+  let generated;
+  if (provider === 'openai') {
+    const result = await api('https://api.openai.com/v1/responses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, instructions, input: JSON.stringify(transcript), text: { format: { type: 'json_object' } } }) }, apiKey);
+    generated = extractText(result);
+  } else {
+    const baseUrl = provider === 'compatible' ? planningBaseUrl : presetUrls[provider];
+    const url = new URL(baseUrl.replace(/\/+$/, '') + '/chat/completions');
+    const result = await api(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: JSON.stringify(transcript) }] }) }, planningApiKey);
+    generated = result.choices?.[0]?.message?.content;
+  }
+  if (!generated) throw Error('内容分析模型没有返回剪辑计划');
+  const plan = normalize(generated, sourceRoot, durations);
   onLog?.(`生成 ${plan.topics.length} 个话题，请检查切点后导出`);
   return { plan, transcript };
 }
